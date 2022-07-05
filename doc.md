@@ -12,6 +12,9 @@ From https://datatracker.ietf.org/doc/html/draft-ietf-secsh-filexfer-02
 -> public key encrypted symmetric key
 (NOT using Diffie-Hellman key exchange)
 
+*All packets should be tailed with MAC*
+MAC = mac(symmetric key, unencrypted packet)
+
 - client authentication
 <- symmetric key encrypted msg
 -> symmetric key encrypted password

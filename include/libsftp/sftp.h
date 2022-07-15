@@ -78,7 +78,7 @@
 #define SSH_FXF_EXCL 0x20
 #define SSH_FXF_TEXT 0x40
 
-/* STATUS codes */
+/* Status codes */
 /** No error */
 #define SSH_FX_OK 0
 /** End-of-file encountered */

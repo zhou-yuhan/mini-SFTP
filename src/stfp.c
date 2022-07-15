@@ -10,14 +10,14 @@
  *
  */
 
-#include "mini-libssh/sftp.h"
+#include "libsftp/sftp.h"
 
 struct sftp_session_struct {
     // TODO
 };
 
 struct sftp_packet_struct {
-    // TODO
+    
 };
 
 /* file handler */

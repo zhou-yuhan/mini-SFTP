@@ -13,8 +13,8 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "mini-libssh/libssh.h"
-#include "mini-libssh/util.h"
+#include "libssh.h"
+#include "util.h"
 
 /*
  * Describes a buffer state

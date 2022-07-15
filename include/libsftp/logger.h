@@ -81,8 +81,7 @@
                DISPLAY_BORDER ? " " : "");                                  \
                                                                             \
         /* display the callee's message */                                  \
-        if (DISPLAY_MESSAGE)                                                \
-            printf(__VA_ARGS__);                                            \
+        if (DISPLAY_MESSAGE) printf(__VA_ARGS__);                           \
                                                                             \
         /* add the message ending (usually '\n') */                         \
         printf("%s", DISPLAY_ENDING ? MSG_ENDING : "");                     \
@@ -156,4 +155,4 @@
         }                                                               \
     } while (0)
 
-#endif  /* logger.h */
+#endif /* logger.h */

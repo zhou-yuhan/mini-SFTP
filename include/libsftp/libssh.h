@@ -24,4 +24,8 @@ API uint32_t ssh_buffer_get_data(ssh_buffer buffer, void *data, uint32_t request
 API void *ssh_buffer_get(ssh_buffer buffer);
 API uint32_t ssh_buffer_get_len(ssh_buffer buffer);
 
+/* error API */
+API char* ssh_get_error(void);
+API char* sftp_get_error(void);
+
 #endif /* LIBSSH_H */

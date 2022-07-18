@@ -73,7 +73,7 @@
 #define SSH_FXF_READ 0x01
 #define SSH_FXF_WRITE 0x02
 #define SSH_FXF_APPEND 0x04
-#define SSH_FXF_CREATE 0x08
+#define SSH_FXF_CREAT 0x08
 #define SSH_FXF_TRUNC 0x10
 #define SSH_FXF_EXCL 0x20
 #define SSH_FXF_TEXT 0x40
@@ -111,6 +111,8 @@
 typedef struct sftp_session_struct* sftp_session;
 typedef struct sftp_file_struct* sftp_file;
 typedef struct sftp_packet_struct* sftp_packet;
+typedef struct sftp_attributes_struct* sftp_attributes;
+typedef struct sftp_status_struct* sftp_status;
 
 
 /**
@@ -189,8 +191,22 @@ API int sftp_close(sftp_file file);
  *
  * @see sftp_get_error()
  */
-API sftp_file sftp_open(sftp_session session, const char* file, int accesstype,
+API sftp_file sftp_open(sftp_session sftp, const char* file, int accesstype,
                         mode_t mode);
+
+/**
+ * @brief Get information about a file or directory.
+ *
+ * @param session       The sftp session handle.
+ * @param path          The path to the file or directory to obtain the
+ *                      information.
+ *
+ * @return              The sftp attributes structure of the file or directory,
+ *                      NULL on error with ssh and sftp error set.
+ *
+ * @see sftp_get_error()
+ */
+API sftp_attributes sftp_stat(sftp_session session, const char *path);
 
 /**
  * @brief Read from a file using an opened sftp file handle.

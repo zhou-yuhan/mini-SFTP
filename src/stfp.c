@@ -1,6 +1,6 @@
 /**
  * @file stfp.c
- * @author Zhou Yuhan
+ * @author Zhou Yuhan (zhouyuhan_@outlook.com)
  * @brief Implementaiton of SFTP functions, including APIs and helpers.
  * Only open, close, read, write of regular files are supported
  * @version 0.1
@@ -22,6 +22,7 @@
 struct sftp_session_struct {
     ssh_session ssh;
     uint32_t id_counter;
+    uint32_t version;
     // TODO
 };
 
@@ -87,6 +88,65 @@ static uint32_t sftp_get_new_id(sftp_session sftp) {
     return ++sftp->id_counter;
 }
 
+int sftp_init(sftp_session sftp) {
+    sftp_packet response = NULL;
+    ssh_buffer buffer = NULL;
+    uint32_t version;
+    int rc;
+
+    sftp->version = LIBSFTP_VERSION;
+
+    buffer = ssh_buffer_new();
+    if (buffer == NULL) {
+        LOG_CRITICAL("can not create ssh buffer");
+        ssh_set_error(SSH_FATAL, "buffer error");
+        return NULL;
+    }
+
+    if ((rc = ssh_buffer_pack(buffer, "d", sftp->version)) != SSH_OK) {
+        LOG_CRITICAL("can not pack buffer");
+        ssh_set_error(SSH_FATAL, "buffer error");
+        ssh_buffer_free(buffer);
+        return NULL;
+    }
+
+    if (sftp_packet_write(sftp, SSH_FXP_INIT, buffer) < 0) {
+        LOG_CRITICAL("can not send init request");
+        ssh_set_error(SSH_FATAL, "init request error");
+        ssh_buffer_free(buffer);
+    }
+    ssh_buffer_free(buffer);
+
+    while (response == NULL) {
+        response = sftp_packet_read(sftp, 0);
+    }
+
+    if (response->type != SSH_FXP_VERSION) {
+        LOG_ERROR("unexpected server response");
+        ssh_set_error(SSH_FATAL, "received code %d during init",
+                      response->type);
+        sftp_packet_free(response);
+        return SSH_ERROR;
+    }
+
+    rc = ssh_buffer_unpack(response->payload, "d", &version);
+    if (rc != SSH_OK) {
+        LOG_ERROR("can not parse server response");
+        ssh_set_error(SSH_FATAL, "buffer error");
+        sftp_packet_free(response);
+        return SSH_ERROR;
+    }
+
+    if(version != sftp->version) {
+        LOG_ERROR("sftp server version %d does not match client version %d", version, sftp->version);
+        ssh_set_error(SSH_REQUEST_DENIED, "version mismatch (server: %d client: %d)", version, sftp->version);
+        sftp_packet_free(response);
+        return SSH_ERROR;
+    }
+
+    return SSH_OK;
+}
+
 sftp_file sftp_open(sftp_session sftp, const char *filename, int flags,
                     mode_t mode) {
     sftp_packet response = NULL;
@@ -132,7 +192,7 @@ sftp_file sftp_open(sftp_session sftp, const char *filename, int flags,
         return NULL;
     }
 
-    if ((rc = sftp_packet_write(sftp, SSH_FXP_OPEN, buffer)) != SSH_OK) {
+    if (sftp_packet_write(sftp, SSH_FXP_OPEN, buffer) < 0) {
         LOG_CRITICAL("can not send open request");
         ssh_set_error(SSH_FATAL, "open request error");
         ssh_buffer_free(buffer);
@@ -173,7 +233,7 @@ sftp_file sftp_open(sftp_session sftp, const char *filename, int flags,
             return handle;
         default:
             LOG_ERROR("unexpected server response");
-            ssh_set_error(SSH_FATAL, "received msg %d during open",
+            ssh_set_error(SSH_FATAL, "received code %d during open",
                           response->type);
             sftp_packet_free(response);
     }
@@ -205,7 +265,7 @@ int sftp_close(sftp_file file) {
         return SSH_ERROR;
     }
 
-    if ((rc = sftp_packet_write(sftp, SSH_FXP_CLOSE, buffer)) != SSH_OK) {
+    if (sftp_packet_write(sftp, SSH_FXP_CLOSE, buffer) < 0) {
         LOG_CRITICAL("can not send close request");
         ssh_set_error(SSH_FATAL, "close request error");
         ssh_buffer_free(buffer);
@@ -244,9 +304,175 @@ int sftp_close(sftp_file file) {
     }
 }
 
-ssize_t sftp_read(sftp_file file, void *buf, size_t count) {}
+ssize_t sftp_read(sftp_file file, void *buf, size_t count) {
+    sftp_session sftp = file->sftp;
+    sftp_packet response = NULL;
+    sftp_status status = NULL;
+    ssh_string data = NULL;
+    size_t recvlen;
+    ssh_buffer buffer = NULL;
+    uint32_t id;
+    int rc;
 
-ssize_t sftp_write(sftp_file file, const void *buf, size_t count) {}
+    if (file->eof) return 0;
+
+    buffer = ssh_buffer_new();
+    if (buffer == NULL) {
+        LOG_CRITICAL("can not create ssh buffer");
+        ssh_set_error(SSH_FATAL, "buffer error");
+        return SSH_ERROR;
+    }
+
+    id = sftp_get_new_id(sftp);
+
+    rc = ssh_buffer_pack(buffer, "dSqq", id, file->handle, file->offset, count);
+    if (rc != SSH_OK) {
+        LOG_CRITICAL("can not pack buffer");
+        ssh_set_error(SSH_FATAL, "buffer error");
+        ssh_buffer_free(buffer);
+        return SSH_ERROR;
+    }
+
+    if (sftp_packet_write(sftp, SSH_FXP_READ, buffer) < 0) {
+        LOG_CRITICAL("can not send read request");
+        ssh_set_error(SSH_FATAL, "read request error");
+        ssh_buffer_free(buffer);
+        return SSH_ERROR;
+    }
+    ssh_buffer_free(buffer);
+
+    while (response == NULL) {
+        response = sftp_packet_read(sftp, id);
+    }
+
+    switch (response->type) {
+        case SSH_FXP_STATUS:
+            status = sftp_parse_status(response);
+            sftp_packet_free(response);
+            if (status == NULL) {
+                LOG_ERROR("can not parse server status");
+                return SSH_ERROR;
+            }
+            ssh_set_error(SSH_REQUEST_DENIED, "status code %d, message %s",
+                          status->status, status->errormsg);
+
+            if (status->status == SSH_FX_EOF) {
+                file->eof = 1;
+                sftp_status_free(status);
+                return 0;
+            } else {
+                LOG_ERROR("read error");
+                sftp_status_free(status);
+                return SSH_ERROR;
+            }
+        case SSH_FXP_DATA:
+            data = ssh_buffer_get_ssh_string(response->payload);
+            sftp_packet_free(response);
+            if (data == NULL) {
+                LOG_ERROR("can not extract data from server response");
+                ssh_set_error(SSH_FATAL, "invalid server DATA packet");
+                return SSH_ERROR;
+            }
+
+            recvlen = ssh_string_len(data);
+            if (recvlen > count) {
+                LOG_ERROR("too much data received");
+                ssh_set_error(SSH_FATAL,
+                              "received a too big DATA packet from server, "
+                              "received %d, asked for %d",
+                              recvlen, count);
+                return SSH_ERROR;
+            }
+            file->offset += recvlen;
+            memcpy(buf, ssh_string_data(data), recvlen);
+            ssh_string_free(data);
+            return recvlen;
+        default:
+            LOG_ERROR("unexpected server response");
+            ssh_set_error(SSH_FATAL, "receive %d during read", response->type);
+            sftp_packet_free(response);
+            return SSH_ERROR;
+    }
+    return SSH_ERROR;
+}
+
+ssize_t sftp_write(sftp_file file, const void *buf, size_t count) {
+    sftp_session sftp = file->sftp;
+    sftp_packet response = NULL;
+    sftp_status status = NULL;
+    ssh_string data = NULL;
+    size_t nleft = count;
+    size_t nwrite;
+    size_t nsend;
+    ssh_buffer buffer = NULL;
+    uint32_t id;
+    int rc;
+
+    while (nleft > 0) {
+        buffer = ssh_buffer_new();
+        if (buffer == NULL) {
+            LOG_CRITICAL("can not create ssh buffer");
+            ssh_set_error(SSH_FATAL, "buffer error");
+            return SSH_ERROR;
+        }
+
+        id = sftp_get_new_id(sftp);
+
+        nwrite = MIN(nleft, SSH_FXP_MAXLEN);
+
+        rc = ssh_buffer_pack(buffer, "dSqqP", id, file->handle, file->offset,
+                             nwrite, (size_t)nwrite,
+                             (char *)buf + (count - nleft));
+        if (rc != SSH_OK) {
+            LOG_CRITICAL("can not pack buffer");
+            ssh_set_error(SSH_FATAL, "buffer error");
+            ssh_buffer_free(buffer);
+            return SSH_ERROR;
+        }
+
+        nsend = sftp_packet_write(sftp, SSH_FXP_WRITE, buffer);
+        if (nsend != ssh_buffer_get_len(buffer)) {
+            LOG_ERROR("can not send write request");
+            ssh_set_error(SSH_FATAL, "write request error");
+            ssh_buffer_free(buffer);
+            return SSH_ERROR;
+        }
+        ssh_buffer_free(buffer);
+
+        while (response == NULL) {
+            response = sftp_packet_read(sftp, id);
+        }
+
+        switch (response->type) {
+            case SSH_FXP_STATUS:
+                status = sftp_parse_status(response);
+                sftp_packet_free(response);
+                if (status == NULL) {
+                    LOG_ERROR("can not parse server status");
+                    return SSH_ERROR;
+                }
+                if (status->status == SSH_FX_OK) {
+                    file->offset += nwrite;
+                    nleft -= nwrite;
+                    sftp_status_free(status);
+                } else {
+                    LOG_ERROR("can not write data");
+                    ssh_set_error(SSH_REQUEST_DENIED,
+                                  "status code %d, message %s", status->status,
+                                  status->errormsg);
+                    sftp_status_free(status);
+                    return SSH_ERROR;
+                }
+            default:
+                LOG_ERROR("unexpected server response");
+                ssh_set_error(SSH_FATAL, "received %d during write",
+                              response->type);
+                sftp_packet_free(response);
+                return SSH_ERROR;
+        }
+    }
+    return count - nleft;
+}
 
 sftp_packet sftp_packet_read(sftp_session sftp, uint32_t id) {}
 

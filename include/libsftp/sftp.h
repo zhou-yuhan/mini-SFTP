@@ -14,6 +14,8 @@
 
 #include "libssh.h"
 
+#define LIBSFTP_VERSION 3
+
 /**
  * Constants defined in RFC2026, we only use a subset of them
  */
@@ -107,6 +109,8 @@
 #define SSH_FX_WRITE_PROTECT 12
 /** No media in remote drive */
 #define SSH_FX_NO_MEDIA 13
+
+#define SSH_FXP_MAXLEN 32768
 
 typedef struct sftp_session_struct* sftp_session;
 typedef struct sftp_file_struct* sftp_file;

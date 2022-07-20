@@ -74,7 +74,6 @@ struct sftp_attributes_struct {
     ssh_string extended_data;
 };
 
-static sftp_attributes sftp_stat(sftp_session session, const char *path);
 static void sftp_status_free(sftp_status status);
 static void sftp_packet_free(sftp_packet packet);
 static void sftp_file_free(sftp_file file);
@@ -100,14 +99,14 @@ int sftp_init(sftp_session sftp) {
     if (buffer == NULL) {
         LOG_CRITICAL("can not create ssh buffer");
         ssh_set_error(SSH_FATAL, "buffer error");
-        return NULL;
+        return SSH_ERROR;
     }
 
     if ((rc = ssh_buffer_pack(buffer, "d", sftp->version)) != SSH_OK) {
         LOG_CRITICAL("can not pack buffer");
         ssh_set_error(SSH_FATAL, "buffer error");
         ssh_buffer_free(buffer);
-        return NULL;
+        return SSH_ERROR;
     }
 
     if (sftp_packet_write(sftp, SSH_FXP_INIT, buffer) < 0) {
@@ -554,4 +553,4 @@ static sftp_status sftp_parse_status(sftp_packet packet) {
  * @param path
  * @return sftp_attributes
  */
-static sftp_attributes sftp_stat(sftp_session session, const char *path) {}
+sftp_attributes sftp_stat(sftp_session session, const char *path) {return NULL;}

@@ -226,7 +226,7 @@ API sftp_attributes sftp_stat(sftp_session session, const char *path);
  *
  * @see sftp_get_error()
  */
-API ssize_t sftp_read(sftp_file file, void* buf, size_t count);
+API int32_t sftp_read(sftp_file file, void* buf, uint32_t count);
 
 /**
  * @brief Write to a file using an opened sftp file handle.
@@ -244,6 +244,6 @@ API ssize_t sftp_read(sftp_file file, void* buf, size_t count);
  * @see                 sftp_read()
  * @see                 sftp_close()
  */
-API ssize_t sftp_write(sftp_file file, const void* buf, size_t count);
+API int32_t sftp_write(sftp_file file, const void* buf, uint32_t count);
 
 #endif /* SFTP_H */

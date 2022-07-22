@@ -80,7 +80,7 @@ static void sftp_file_free(sftp_file file);
 static sftp_status sftp_parse_status(sftp_packet packet);
 static sftp_file sftp_parse_handle(sftp_packet packet);
 static sftp_packet sftp_packet_read(sftp_session sftp, uint32_t id);
-static ssize_t sftp_packet_write(sftp_session sftp, uint8_t type,
+static int32_t sftp_packet_write(sftp_session sftp, uint8_t type,
                                  ssh_buffer payload);
 
 static uint32_t sftp_get_new_id(sftp_session sftp) {
@@ -303,12 +303,12 @@ int sftp_close(sftp_file file) {
     }
 }
 
-ssize_t sftp_read(sftp_file file, void *buf, size_t count) {
+int32_t sftp_read(sftp_file file, void *buf, uint32_t count) {
     sftp_session sftp = file->sftp;
     sftp_packet response = NULL;
     sftp_status status = NULL;
     ssh_string data = NULL;
-    size_t recvlen;
+    uint32_t recvlen;
     ssh_buffer buffer = NULL;
     uint32_t id;
     int rc;
@@ -324,7 +324,7 @@ ssize_t sftp_read(sftp_file file, void *buf, size_t count) {
 
     id = sftp_get_new_id(sftp);
 
-    rc = ssh_buffer_pack(buffer, "dSqq", id, file->handle, file->offset, count);
+    rc = ssh_buffer_pack(buffer, "dSqd", id, file->handle, file->offset, count);
     if (rc != SSH_OK) {
         LOG_CRITICAL("can not pack buffer");
         ssh_set_error(SSH_FATAL, "buffer error");
@@ -395,14 +395,14 @@ ssize_t sftp_read(sftp_file file, void *buf, size_t count) {
     return SSH_ERROR;
 }
 
-ssize_t sftp_write(sftp_file file, const void *buf, size_t count) {
+int32_t sftp_write(sftp_file file, const void *buf, uint32_t count) {
     sftp_session sftp = file->sftp;
     sftp_packet response = NULL;
     sftp_status status = NULL;
     ssh_string data = NULL;
-    size_t nleft = count;
-    size_t nwrite;
-    size_t nsend;
+    uint32_t nleft = count;
+    uint32_t nwrite;
+    uint32_t nsend;
     ssh_buffer buffer = NULL;
     uint32_t id;
     int rc;
@@ -419,8 +419,8 @@ ssize_t sftp_write(sftp_file file, const void *buf, size_t count) {
 
         nwrite = MIN(nleft, SSH_FXP_MAXLEN);
 
-        rc = ssh_buffer_pack(buffer, "dSqqP", id, file->handle, file->offset,
-                             nwrite, (size_t)nwrite,
+        rc = ssh_buffer_pack(buffer, "dSqdP", id, file->handle, file->offset,
+                             nwrite, nwrite,
                              (char *)buf + (count - nleft));
         if (rc != SSH_OK) {
             LOG_CRITICAL("can not pack buffer");
@@ -475,7 +475,7 @@ ssize_t sftp_write(sftp_file file, const void *buf, size_t count) {
 
 sftp_packet sftp_packet_read(sftp_session sftp, uint32_t id) {}
 
-ssize_t sftp_packet_write(sftp_session sftp, uint8_t type, ssh_buffer payload) {
+int32_t sftp_packet_write(sftp_session sftp, uint8_t type, ssh_buffer payload) {
 
 }
 

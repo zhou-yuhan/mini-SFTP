@@ -16,7 +16,7 @@
 #include "libsftp/buffer.h"
 #include "libsftp/error.h"
 #include "libsftp/logger.h"
-#include "libsftp/sftp.h"
+#include "libsftp/libsftp.h"
 #include "libsftp/util.h"
 
 struct sftp_session_struct {

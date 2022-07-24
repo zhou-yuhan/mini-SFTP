@@ -1,4 +1,4 @@
-#include "libsftp/sftp.h"
+#include "libsftp/libsftp.h"
 #include "libsftp/buffer.h"
 #include <stdio.h>
 #include <string.h>

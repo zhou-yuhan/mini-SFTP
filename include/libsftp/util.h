@@ -53,4 +53,7 @@
         28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, \
         11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0
 
+char *ssh_get_local_username(void); 
+char *ssh_get_home_dir(void)
+
 #endif /* UTIL_H */

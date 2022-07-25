@@ -11,4 +11,5 @@ int main(int argc, char** argv) {
     int a, b;
     ssh_buffer_unpack(buf, "dSd", &a, &s, &b);
     printf("%d %s %d", a, ssh_string_get_char(s), b);
+    printf("%s", ssh_get_local_username());
 }

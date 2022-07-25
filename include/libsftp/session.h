@@ -64,26 +64,12 @@ struct ssh_session_struct {
     struct {
         char *username;
         char *host;
-        char *bindaddr; /* bind the client to an ip addr */
         char *sshdir;
         char *knownhosts;
-        char *global_knownhosts;
         char *wanted_methods[SSH_KEX_METHODS];
         char *pubkey_accepted_types;
-        char *ProxyCommand;
         char *custombanner;
-        unsigned long timeout; /* seconds */
-        unsigned long timeout_usec;
         unsigned int port;
-        int fd;
-        int StrictHostKeyChecking;
-        char compressionlevel;
-        char *gss_server_identity;
-        char *gss_client_identity;
-        int gss_delegate_creds;
-        int flags;
-        int nodelay;
-        bool config_processed;
     } opts;
 };
 

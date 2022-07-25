@@ -108,7 +108,7 @@ enum ssh_options_e {
 /* ssh API */
 typedef struct ssh_session_struct *ssh_session;
 API ssh_session ssh_new(void);
-API int ssh_options_set(ssh_session session, enum ssh_options_e type, const void **value);
+API int ssh_options_set(ssh_session session, enum ssh_options_e type, const void *value);
 API int ssh_connect(ssh_session session);
 API void ssh_disconnect(ssh_session session);
 API void ssh_free(ssh_session session);
